@@ -1,11 +1,14 @@
 ﻿using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.ServiceFabric.Actors.Client;
 using Microsoft.ServiceFabric.Services.Communication.AspNetCore;
 using Microsoft.ServiceFabric.Services.Communication.Runtime;
 using Microsoft.ServiceFabric.Services.Runtime;
 using System.Collections.Generic;
 using System.Fabric;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace CatalogService
 {
@@ -44,30 +47,5 @@ namespace CatalogService
                     }))
             };
         }
-
-        //protected override async Task RunAsync(CancellationToken cancellationToken)
-        //{
-
-        //    var configurationPackage = Context.CodePackageActivationContext.GetConfigurationPackageObject("Config");
-
-        //    var brokerSection = configurationPackage.Settings.Sections["DefaultBrokers"];
-        //    if (brokerSection != null && brokerSection.Parameters != null)
-        //    {
-        //        foreach (var parm in brokerSection.Parameters)
-        //        {
-        //            var token = new CancellationToken();
-        //            try
-        //            {
-        //                var catalogProxy = ActorProxy.Create<IBrokerCatalogActor>(new ActorId("default"), serviceName: "BrokerCatalogActor");
-        //                await catalogProxy.AddBrokerAsync(new OSB.Broker { Name = parm.Name, Url = parm.Value, User = "haishi", Password = "P$ssword!" }, token);
-        //            }
-        //            catch (Exception exp)
-        //            {
-        //                ServiceEventSource.Current.ServiceMessage(Context, ">>>>>" + exp.Message + "---" + exp.GetType().ToString());
-        //            }
-        //        }
-        //    }
-
-        //}
     }
 }

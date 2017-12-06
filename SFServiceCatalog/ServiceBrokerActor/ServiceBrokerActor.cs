@@ -11,6 +11,8 @@ using OSB;
 using sfcat;
 using sfcat.OSBCommands;
 using Microsoft.ServiceFabric.Services.Client;
+using Newtonsoft.Json.Linq;
+using System.Runtime.Serialization;
 
 namespace ServiceBrokerActor
 {
@@ -47,55 +49,109 @@ namespace ServiceBrokerActor
         }
         public async Task<bool> Connect(string serviceId, string planId, string instanceId, string parameters, CancellationToken cancellationToken)
         {
-            await this.StateManager.SetStateAsync<string>("ServiceId", serviceId);
-            await this.StateManager.SetStateAsync<string>("PlanId", planId);
-            await this.StateManager.SetStateAsync<string>("InstanceId", instanceId);
-            string address = await resolveCatalogServiceAddress();
-            CreateServiceInstanceCommand command = new CreateServiceInstanceCommand(new Dictionary<string, string>
+            var state = await this.StateManager.TryGetStateAsync<MyState>(instanceId, cancellationToken);
+            if (state.HasValue)
+            {
+                return true;
+            }
+            else
+            {
+                string address = await resolveCatalogServiceAddress();
+                CreateServiceInstanceCommand command = new CreateServiceInstanceCommand(new Dictionary<string, string>
             {
                 {"id", instanceId },
                 {"f", parameters}
             }, new ServiceInstanceSchemaChecker(address));
-            command.InjectSwitch("CatalogServiceEndpoint", address);
-            var conclusion = command.Run();
-            return conclusion is SuccessConclusion;
-        }
-
-        public async Task<BindingwithResult> GetBinding(string bindingId, string parameters, CancellationToken cancellationToken)
-        {
-            
-            var instanceId = await this.StateManager.GetStateAsync<string>("InstanceId", cancellationToken);
-            if (string.IsNullOrEmpty(bindingId))
-                bindingId = Guid.NewGuid().ToString("N");
-            var binding = await this.StateManager.TryGetStateAsync<BindingwithResult>(bindingId, cancellationToken);
-            if (binding.HasValue)
-            {
-
-                return binding.Value;
-            } else
-            {
-                string address = await resolveCatalogServiceAddress();
-                CreateBindingCommand command = new CreateBindingCommand(new Dictionary<string, string>
-                {
-                    {"instance-id", instanceId},
-                    {"id", bindingId },
-                    {"f", parameters }
-                }, new ServiceInstanceSchemaChecker(address));
                 command.InjectSwitch("CatalogServiceEndpoint", address);
-                command.Run();
-
-                ListEntitiesCommand<BindingwithResult> listCommand = new ListEntitiesCommand<BindingwithResult>("binding");
-                listCommand.InjectSwitch("CatalogServiceEndpoint", address);
-                var conclusion = listCommand.Run();
-                var bindings = ((MultiOutputConclusion)conclusion).GetObjectList<BindingwithResult>();
-                if (bindings.Count > 0)
+                var conclusion = command.Run();
+                if (conclusion is SuccessConclusion)
                 {
-                    await this.StateManager.SetStateAsync<BindingwithResult>(bindingId, bindings[0], cancellationToken);
-                    return bindings[0];
+                    await this.StateManager.SetStateAsync<MyState>(instanceId, new MyState
+                    {
+                        ServiceId = serviceId,
+                        PlanId = planId,
+                        InstanceId = instanceId,
+                        BindingId = "",
+                        Credential = null
+                    }, cancellationToken);
+                    return true;
                 }
                 else
-                    return null;
+                    return false;
             }
         }
+
+        public async Task<List<Tuple<string,string>>> GetBindingCredential(string instanceId, string bindingId, string parameters, CancellationToken cancellationToken)
+        {
+            var state = await this.StateManager.TryGetStateAsync<MyState>(instanceId, cancellationToken);
+            if (state.HasValue)
+            {
+                if (state.Value.Credential != null)
+                    return makeTupleList(state.Value.Credential);
+                else
+                {
+                    string address = await resolveCatalogServiceAddress();
+                    CreateBindingCommand command = new CreateBindingCommand(new Dictionary<string, string>
+                    {
+                        {"instance-id", instanceId},
+                        {"id", bindingId },
+                        {"f", parameters }
+                    }, new ServiceInstanceSchemaChecker(address));
+                    command.InjectSwitch("CatalogServiceEndpoint", address);
+                    command.Run();
+
+                    ListEntitiesCommand<BindingwithResult> listCommand = new ListEntitiesCommand<BindingwithResult>("binding");
+                    listCommand.InjectSwitch("CatalogServiceEndpoint", address);
+                    var conclusion = listCommand.Run();
+                    var bindings = ((MultiOutputConclusion)conclusion).GetObjectList<BindingwithResult>();
+                    if (bindings.Count > 0 && bindings[0].Result != null && !string.IsNullOrEmpty(bindings[0].Result.Credentials))
+                    {
+                        var newState = new MyState
+                        {
+                            ServiceId = state.Value.ServiceId,
+                            PlanId = state.Value.PlanId,
+                            InstanceId = instanceId,
+                            BindingId = bindingId,
+                            Credential = bindings[0].Result.Credentials
+                        };
+                        await this.StateManager.SetStateAsync<MyState>(instanceId, newState, cancellationToken);
+                        return makeTupleList(bindings[0].Result.Credentials);
+                    }
+                    else
+                        return null;
+                }
+            }
+            else
+                return null;
+        }
+        private List<Tuple<string,string>> makeTupleList(string credential)
+        {
+            if (!string.IsNullOrEmpty(credential))
+            {
+                var ret = new List<Tuple<string, string>>();
+                var credentialObj = JObject.Parse(credential);
+                foreach (var p in credentialObj.Properties())
+                {
+                    ret.Add(new Tuple<string, string>(p.Name, p.Value.ToString()));
+                }
+                return ret;
+            }
+            else
+                return null;
+        }
+    }
+    [DataContract]
+    internal class MyState
+    {
+        [DataMember]
+        public string InstanceId { get; set; }
+        [DataMember]
+        public string ServiceId { get; set; }
+        [DataMember]
+        public string PlanId { get; set; }
+        [DataMember]
+        public string BindingId { get; set; }
+        [DataMember]
+        public string Credential { get; set; }
     }
 }

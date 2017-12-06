@@ -1,4 +1,4 @@
-#Using sfcat - walkthrough
+# Using sfcat - walkthrough
 sfcat is a sample command-line tool to interact with Catalog Service. The following walkthrough presents you the steps to provision and bind to an Azure Storage account.
 
 # Register a broker
@@ -9,12 +9,17 @@ sfcat get broker
 to check your registered OSB API endpoints. If you don't have one set up yet, you can use:
 ```bash
 sfcat create broker --name <broker name of your choice> --url <OSB endpoint> --user <user name> --password <password>
+
+for example:
+
+sfcat create broker --name azure-broker --url http://35.203.182.162:80 --user username --password password
+
 ```
 to register one.
 
 Once a broker is registered, you can get its supported service types by:
 ```bash
-sfcat get service-class
+sfcat get service-class (or sfcat get sc)
 ```
 For example, after you connect to an Azure OSB API endpoint, you should see the following list:
 
@@ -54,14 +59,14 @@ To create a storage account, use:
 
 ```bash
 sfcat create service-instance --file <path to your parameter file> --id <id of your choice>
+
+for example:
+
+sfcat create service-instance --file sampleFiles\azure-broker\storage.json --id cat01
 ``` 
-Once the request is sent, you can use:
+You can use:
 ```bash
-sfcat watch service-instance <id>
-```
-to monitor the provision status of the resource. And you can use:
-```bash
-sfcat get service-instance
+sfcat get service-instance (or sfcat get si)
 ```
 to list all provisioned service instances.
 
@@ -80,10 +85,14 @@ To create a binding, use:
 
 ```bash
 sfcat create binding --file <path to your parameter file> --instance-id <service instnace id> --id <id of your choice>
+
+for example:
+
+sfcat create binding --file sampleFiles\binding.json --instance-id cat01 --id dog01
 ```
 
 Once the binding is created, you can use:
 ```bash
-sfcat get binding
+sfcat get binding (or sfcat get bd)
 ```
 To get binding details, such as access key to the storage account.

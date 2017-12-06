@@ -16,6 +16,6 @@ namespace ServiceBrokerActor.Interfaces
     {
         Task<bool> Connect(string serviceId, string planId, string instanceId, string parameters, CancellationToken cancellationToken);
 
-        Task<BindingwithResult> GetBinding(string bindingId, string parameters, CancellationToken cancellationToken);
+        Task<List<Tuple<string,string>>> GetBindingCredential(string instanceId, string bindingId, string parameters, CancellationToken cancellationToken);
     }
 }

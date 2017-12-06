@@ -4,8 +4,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.ServiceFabric.Actors.Client;
-using BrokeredServiceActor.Interfaces;
+
 using Microsoft.ServiceFabric.Actors;
+using ServiceBrokerActor.Interfaces;
+using System.Threading;
 
 namespace WebApp.Controllers
 {
@@ -13,13 +15,41 @@ namespace WebApp.Controllers
     {
         public IActionResult Index()
         {
-            var actorProxy = ActorProxy.Create<IBrokeredServiceActor>(new ActorId("wmll624"));
-            var credentialDict = actorProxy.GetBindingCredential(new System.Threading.CancellationToken()).Result;
             string viewState = "";
-            foreach(var tuple in credentialDict)
+            string instanceId = "mystorage";
+            string bindingId = "myBinding";
+            var token = default(CancellationToken);
+            var actorProxy = ActorProxy.Create<IServiceBrokerActor>(new ActorId("1"), new Uri("fabric:/SFServiceCatalog/ServiceBrokerActorService"));
+            var result = actorProxy.Connect(
+                serviceId: "2e2fc314-37b6-4587-8127-8f9ee8b33fea",
+                planId: "6ddf6b41-fb60-4b70-af99-8ecc4896b3cf",
+                instanceId: instanceId,
+                parameters: @"{
+                    ""service_id"": ""2e2fc314-37b6-4587-8127-8f9ee8b33fea"",
+                    ""plan_id"": ""6ddf6b41-fb60-4b70-af99-8ecc4896b3cf"",
+                    ""parameters"": {
+                        ""resourceGroup"": ""osb-test-group"",
+                        ""storageAccountName"": ""cat01"",
+                        ""location"": ""eastus"",
+                        ""accountType"": ""Standard_LRS""
+                    }
+                }", 
+                cancellationToken: token).Result;
+
+            if (result)
             {
-                viewState += "<h2><b>" + tuple.Item1 + "</b><h2>";
-                viewState += "<h3>" + tuple.Item2 + "</h3>";
+                var binding = actorProxy.GetBindingCredential(instanceId, bindingId, @"{
+                    ""service_id"": ""2e2fc314-37b6-4587-8127-8f9ee8b33fea"",
+                    ""plan_id"": ""6ddf6b41-fb60-4b70-af99-8ecc4896b3cf""
+                }", token).Result;
+                if (binding != null)
+                {
+                    foreach (var tuple in binding)
+                    {
+                        viewState += "<h2><b>" + tuple.Item1 + "</b><h2>";
+                        viewState += "<h3>" + tuple.Item2 + "</h3>";
+                    }
+                }
             }
             ViewData["Message"] = viewState;
             return View();
