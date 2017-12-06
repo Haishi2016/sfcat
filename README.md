@@ -1,4 +1,35 @@
 
+# Service Fabric Service Catalog
+Service Catalog is an add-on service to your Service Fabric cluster that allows you to provision and bind to Azure services through [Open Service Broker API](https://www.openservicebrokerapi.org/). 
+
+# Build and Deploy
+
+## Build and deploy the service
+Clone this repository and build the **SFServiceCatalog** solution. Then, deploy the **SFServiceCatalog** application to your Service Fabric cluster. Now, you've got a Catalog Service on your cluster.
+
+## Build and configure client
+Service Catalog is currently managed by a sample command-line tool, **sfcat**. You can build **sfcat** by building the **sfcat** solution under *tools\sfcat* folder. Modify the **app.config** under sfcat to point sfcat to your Catalog Service endpoint:
+
+```xml
+ <appSettings>
+    <add key="CatalogServiceEndpoint" value="http://localhost:8088"/>
+    ...
+  </appSettings>
+```
+
+# Getting started
+
+With current version, you need to register your OSB endpoint with your Catalog Service using sfcat. We are looking at making this part of the Catalog Service configuration so that you don't have to use sfcat at all.
+
+```bash
+sfcat create broker --name <broker name of your choice> --url <OSB endpoint> --user <user name> --password <password>
+```
+
+Next, you can:
+
+* [Manage Catalog Service using **sfcat**](docs/sfcat.md)
+* [Use Catalog Service from your Service Fabric applciations](docs/programmability.md)
+
 # Contributing
 
 This project welcomes contributions and suggestions.  Most contributions require you to agree to a
